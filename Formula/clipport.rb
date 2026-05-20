@@ -4,6 +4,7 @@ class Clipport < Formula
   url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "e04a80d267bf4acdb8d7dd14b7e7cdab0c2a648292d4285affc51194c5f5b470"
   license "MIT"
+  revision 1
   head "https://github.com/arihantsethia/clipport.git", branch: "main"
 
   depends_on "go" => :build
@@ -18,7 +19,8 @@ class Clipport < Formula
     app = libexec/"Clipport.app"
     (app/"Contents/MacOS").mkpath
     (app/"Contents/Resources").mkpath
-    app.install_symlink bin/"clipport" => "Contents/MacOS/clipport"
+    cp bin/"clipport", app/"Contents/MacOS/clipport"
+    chmod 0755, app/"Contents/MacOS/clipport"
     (app/"Contents/Resources").install "cmd/clipport/assets/app.icns" => "Clipport.icns"
 
     (app/"Contents/Info.plist").write <<~XML
