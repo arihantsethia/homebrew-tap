@@ -4,7 +4,7 @@ class Clipport < Formula
   url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "e04a80d267bf4acdb8d7dd14b7e7cdab0c2a648292d4285affc51194c5f5b470"
   license "MIT"
-  revision 1
+  revision 2
   head "https://github.com/arihantsethia/clipport.git", branch: "main"
 
   depends_on "go" => :build
@@ -77,6 +77,27 @@ class Clipport < Formula
       #!/bin/sh
       set -eu
 
+      app_link="$HOME/Applications/Clipport.app"
+      app_target="#{opt_libexec}/Clipport.app"
+      mkdir -p "$HOME/Applications"
+      if [ -L "$app_link" ]; then
+        rm "$app_link"
+      fi
+      if [ -e "$app_link" ]; then
+        bundle_id=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$app_link/Contents/Info.plist" 2>/dev/null || true)
+        if [ "$bundle_id" = "com.clipport.app" ]; then
+          rm -rf "$app_link"
+        else
+          echo "clipport: $app_link already exists and is not Clipport" >&2
+          exit 1
+        fi
+      fi
+      ln -s "$app_target" "$app_link"
+      lsregister="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+      if [ -x "$lsregister" ]; then
+        "$lsregister" -f "$app_link" >/dev/null 2>&1 || true
+      fi
+
       port=18765
       while [ "$port" -le 18865 ]; do
         if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
@@ -92,7 +113,7 @@ class Clipport < Formula
       exec "#{opt_bin}/clipctl" install-record \\
         --bin-dir "#{opt_bin}" \\
         --app-launchd-plist "#{opt_libexec}/com.clipport.app.plist" \\
-        --app-path "#{opt_libexec}/Clipport.app" \\
+        --app-path "$app_link" \\
         --http "127.0.0.1:$port" \\
         --iterm-key "0x76-0x120000"
     SH
