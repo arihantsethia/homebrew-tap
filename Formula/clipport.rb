@@ -1,10 +1,9 @@
 class Clipport < Formula
   desc "Paste local clipboard text and screenshots into remote iTerm SSH sessions"
   homepage "https://github.com/arihantsethia/clipport"
-  url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "e04a80d267bf4acdb8d7dd14b7e7cdab0c2a648292d4285affc51194c5f5b470"
+  url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.1.tar.gz"
+  sha256 "28feb37d6e83c0521c4f12c00fe507b8531d30bef6f2c052415410860bd1e495"
   license "MIT"
-  revision 3
   head "https://github.com/arihantsethia/clipport.git", branch: "main"
 
   depends_on "go" => :build
@@ -129,7 +128,6 @@ class Clipport < Formula
   def caveats
     <<~EOS
       Finish setup with:
-        clipport-setup
         clipctl onboard
         clipctl start
         clipctl doctor
