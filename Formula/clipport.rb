@@ -4,7 +4,7 @@ class Clipport < Formula
   url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "e04a80d267bf4acdb8d7dd14b7e7cdab0c2a648292d4285affc51194c5f5b470"
   license "MIT"
-  revision 2
+  revision 3
   head "https://github.com/arihantsethia/clipport.git", branch: "main"
 
   depends_on "go" => :build
@@ -98,23 +98,29 @@ class Clipport < Formula
         "$lsregister" -f "$app_link" >/dev/null 2>&1 || true
       fi
 
-      port=18765
-      while [ "$port" -le 18865 ]; do
-        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-          break
+      config_path="${CLIPPORT_CONFIG:-$HOME/.config/clipport/config.toml}"
+      http_args=""
+      if [ ! -f "$config_path" ]; then
+        port=18765
+        while [ "$port" -le 18865 ]; do
+          if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+            break
+          fi
+          port=$((port + 1))
+        done
+        if [ "$port" -gt 18865 ]; then
+          echo "clipport: no free loopback HTTP port found in 18765-18865" >&2
+          exit 1
         fi
-        port=$((port + 1))
-      done
-      if [ "$port" -gt 18865 ]; then
-        echo "clipport: no free loopback HTTP port found in 18765-18865" >&2
-        exit 1
+        http_args="--http 127.0.0.1:$port"
       fi
 
       exec "#{opt_bin}/clipctl" install-record \\
+        --config "$config_path" \\
         --bin-dir "#{opt_bin}" \\
         --app-launchd-plist "#{opt_libexec}/com.clipport.app.plist" \\
         --app-path "$app_link" \\
-        --http "127.0.0.1:$port" \\
+        $http_args \\
         --iterm-key "0x76-0x120000"
     SH
     chmod 0755, bin/"clipport-setup"
