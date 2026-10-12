@@ -1,0 +1,113 @@
+name: Update Clipport
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-clipport
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.prepare.outputs.changed }}
+      tag: ${{ steps.prepare.outputs.tag }}
+      commit: ${{ steps.prepare.outputs.commit }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s .github/scripts -v
+      - name: Prepare latest stable release
+        id: prepare
+        run: python3 .github/scripts/update_clipport.py prepare --proposal "$RUNNER_TEMP/proposal.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.prepare.outputs.changed == 'true'
+        with:
+          name: clipport-proposal
+          path: ${{ runner.temp }}/proposal.json
+          retention-days: 1
+          if-no-files-found: error
+
+  verify:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: clipport-proposal
+          path: ${{ runner.temp }}/proposal
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Apply candidate formula
+        run: python3 .github/scripts/update_clipport.py apply --proposal "$RUNNER_TEMP/proposal/proposal.json"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: arihantsethia/clipport
+          ref: ${{ needs.prepare.outputs.commit }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: source/go.mod
+          cache-dependency-path: source/go.sum
+      - name: Test release source
+        working-directory: source
+        run: |
+          go test ./...
+          go test -race ./internal/daemon ./internal/terminal ./internal/remote
+          go vet ./...
+      - name: Install and test candidate formula
+        run: |
+          ruby -c Formula/clipport.rb
+          brew tap arihantsethia/tap
+          cp Formula/clipport.rb "$(brew --repository arihantsethia/tap)/Formula/clipport.rb"
+          brew install --build-from-source arihantsethia/tap/clipport
+          brew test arihantsethia/tap/clipport
+
+  publish:
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # This job never checks out or executes upstream release code. The proposal
+      # was uploaded by prepare, before source tests ran in a separate job.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: clipport-proposal
+          path: ${{ runner.temp }}/proposal
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Revalidate and apply only URL and SHA-256
+        run: python3 .github/scripts/update_clipport.py verify --proposal "$RUNNER_TEMP/proposal/proposal.json"
+      - name: Commit tested formula
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- Formula/clipport.rb
+          git commit -m "chore: update clipport to ${RELEASE_TAG}"
+          git push origin HEAD:main

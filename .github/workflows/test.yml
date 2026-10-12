@@ -1,0 +1,40 @@
+name: Test tap
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  updater:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s .github/scripts -v
+      - name: Check live release metadata (read-only)
+        run: python3 .github/scripts/update_clipport.py prepare --proposal "$RUNNER_TEMP/proposal.json"
+
+  formula:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install and test formula
+        run: |
+          ruby -c Formula/clipport.rb
+          brew tap arihantsethia/tap
+          cp Formula/clipport.rb "$(brew --repository arihantsethia/tap)/Formula/clipport.rb"
+          brew install --build-from-source arihantsethia/tap/clipport
+          brew test arihantsethia/tap/clipport

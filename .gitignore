@@ -1,2 +1,4 @@
 *.bottle*.tar.gz
 *.json
+
+__pycache__/

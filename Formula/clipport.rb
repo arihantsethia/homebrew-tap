@@ -129,8 +129,14 @@ class Clipport < Formula
     <<~EOS
       Finish setup with:
         clipctl onboard
-        clipctl start
-        clipctl doctor
+
+      Onboarding starts Clipport. Open a new SSH session, then run
+      clipctl doctor in a separate local Mac pane.
+
+      To update an existing install:
+        brew update
+        brew upgrade arihantsethia/tap/clipport
+        clipctl restart
     EOS
   end
 
