@@ -1,8 +1,8 @@
 class Clipport < Formula
   desc "Paste local clipboard text and screenshots into remote iTerm SSH sessions"
   homepage "https://github.com/arihantsethia/clipport"
-  url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.1.tar.gz"
-  sha256 "28feb37d6e83c0521c4f12c00fe507b8531d30bef6f2c052415410860bd1e495"
+  url "https://github.com/arihantsethia/clipport/archive/refs/tags/v0.1.2.tar.gz"
+  sha256 "fca7776cf03bc998202d99b74597485e00307e7a8206d13431985c7cfca767da"
   license "MIT"
   head "https://github.com/arihantsethia/clipport.git", branch: "main"
 
