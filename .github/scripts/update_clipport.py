@@ -32,6 +32,10 @@ def api(path):
         "Accept": "application/vnd.github+json", "User-Agent": "clipport-homebrew-updater",
         "X-GitHub-Api-Version": "2022-11-28",
     })
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        # API has a fixed api.github.com origin; never forward the token on redirects.
+        request.add_unredirected_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(request, timeout=60) as response:
         return json.load(response)
 
